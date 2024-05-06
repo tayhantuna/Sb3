@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ödev Paylaşım Sitesi</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Ödev Paylaşım Sitesi</h1>
+        <div id="user-div"></div>
+    </header>
+    <div id="app">
+        <form id="add-assignment-form">
+            <input type="text" id="student-name" placeholder="Öğrenci Adı" required>
+            <input type="text" id="student-surname" placeholder="Öğrenci Soyadı" required>
+            <input type="file" id="assignment-file" required>
+            <button type="submit">Ödevi Ekle</button>
+        </form>
+        <ul id="assignments-list"></ul>
+    </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-analytics.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-storage.js";
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyAfxtLiAeGc7-v-02U_6CvT6laujdc3lEE",
+  authDomain: "tictactoe-4f778.firebaseapp.com",
+  databaseURL: "https://tictactoe-4f778-default-rtdb.firebaseio.com",
+  projectId: "tictactoe-4f778",
+  storageBucket: "tictactoe-4f778.appspot.com",
+  messagingSenderId: "421178739898",
+  appId: "1:421178739898:web:3e6ccb8d59f41f80ee8683",
+  measurementId: "G-K3S3PJCRFB"
+};
+
+        // Firebase uygulamasını başlat
+        const firebaseApp = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(firebaseApp);
+        const db = getFirestore();
+        const storage = getStorage();
+
+        // Öğrenci adı, soyadı ve dosya yükleme formunu dinle
+        const form = document.querySelector('#add-assignment-form');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = form['student-name'].value;
+            const surname = form['student-surname'].value;
+            const file = form['assignment-file'].files[0];
+            const fileRef = ref(storage, file.name);
+            await uploadBytes(fileRef, file);
+            const downloadURL = await getDownloadURL(fileRef);
+            await addDoc(collection(db, 'assignments'), {
+                name,
+                surname,
+                fileURL: downloadURL
+            });
+            form.reset();
+        });
+
+        // Firebase'deki ödevleri dinle ve listele
+        const assignmentsList = document.querySelector('#assignments-list');
+        onSnapshot(collection(db, 'assignments'), (snapshot) => {
+            assignmentsList.innerHTML = '';
+            snapshot.forEach(doc => {
+                renderAssignment(doc.data(), doc.id);
+            });
+        });
+
+        // Ödevi render et
+        function renderAssignment(assignment, id) {
+            const li = document.createElement('li');
+            li.setAttribute('data-id', id);
+            li.innerHTML = `
+                <span>Öğrenci Adı: ${assignment.name}</span>
+                <span>Öğrenci Soyadı: ${assignment.surname}</span>
+                <a href="${assignment.fileURL}" target="_blank">Ödevi İndir</a>
+            `;
+            assignmentsList.appendChild(li);
+        }
+    </script>
+</body>
+</html>
