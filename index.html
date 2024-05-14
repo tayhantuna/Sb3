@@ -12,6 +12,11 @@
         <div id="user-div"></div>
     </header>
     <div id="app">
+        <div id="scratch-container">
+           
+        </div>
+        
+        
         <form id="add-assignment-form">
             <input type="text" id="student-name" placeholder="Öğrenci Adı" required>
             <input type="text" id="student-surname" placeholder="Öğrenci Soyadı" required>
@@ -20,28 +25,21 @@
         </form>
         <ul id="assignments-list"></ul>
     </div>
+    
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-app.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-analytics.js";
         import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-firestore.js";
-        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-storage.js";
-        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyAfxtLiAeGc7-v-02U_6CvT6laujdc3lEE",
-  authDomain: "tictactoe-4f778.firebaseapp.com",
-  databaseURL: "https://tictactoe-4f778-default-rtdb.firebaseio.com",
-  projectId: "tictactoe-4f778",
-  storageBucket: "tictactoe-4f778.appspot.com",
-  messagingSenderId: "421178739898",
-  appId: "1:421178739898:web:3e6ccb8d59f41f80ee8683",
-  measurementId: "G-K3S3PJCRFB"
-};
+        import { getStorage, ref, uploadBytes, getDownloadURL, getMetadata} from "https://www.gstatic.com/firebasejs/9.6.6/firebase-storage.js";
+
+        const firebaseConfig = { apiKey: "AIzaSyAfxtLiAeGc7-v-02U_6CvT6laujdc3lEE", authDomain: "tictactoe-4f778.firebaseapp.com", databaseURL: "https://tictactoe-4f778-default-rtdb.firebaseio.com", projectId: "tictactoe-4f778", storageBucket: "tictactoe-4f778.appspot.com", messagingSenderId: "421178739898", appId: "1:421178739898:web:3e6ccb8d59f41f80ee8683", measurementId: "G-K3S3PJCRFB" };
 
         // Firebase uygulamasını başlat
         const firebaseApp = initializeApp(firebaseConfig);
         const analytics = getAnalytics(firebaseApp);
         const db = getFirestore();
         const storage = getStorage();
+        let sc = document.getElementById("scratch-container");
 
         // Öğrenci adı, soyadı ve dosya yükleme formunu dinle
         const form = document.querySelector('#add-assignment-form');
@@ -62,25 +60,49 @@ const firebaseConfig = {
         });
 
         // Firebase'deki ödevleri dinle ve listele
-        const assignmentsList = document.querySelector('#assignments-list');
-        onSnapshot(collection(db, 'assignments'), (snapshot) => {
-            assignmentsList.innerHTML = '';
-            snapshot.forEach(doc => {
-                renderAssignment(doc.data(), doc.id);
-            });
-        });
+const assignmentsList = document.querySelector('#assignments-list');
+onSnapshot(collection(db, 'assignments'), (snapshot) => {
+    assignmentsList.innerHTML = '';
+    snapshot.forEach(async doc => {
+        const assignmentData = doc.data();
+        const fileRef = ref(storage, assignmentData.fileURL);
+        const metadata = await getMetadata(fileRef);
+        const fileName = metadata.name;
+        renderAssignment(assignmentData, doc.id, fileName);
+    });
+});
 
-        // Ödevi render et
-        function renderAssignment(assignment, id) {
-            const li = document.createElement('li');
-            li.setAttribute('data-id', id);
-            li.innerHTML = `
-                <span>Öğrenci Adı: ${assignment.name}</span>
-                <span>Öğrenci Soyadı: ${assignment.surname}</span>
-                <a href="${assignment.fileURL}" target="_blank">Ödevi İndir</a>
-            `;
-            assignmentsList.appendChild(li);
-        }
+// Ödevi render et
+function renderAssignment(assignment, id, fileName) {
+    const li = document.createElement('li');
+    li.setAttribute('data-id', id);
+    li.innerHTML = `
+        <span>Öğrenci Adı: ${assignment.name}</span>
+        <span>Öğrenci Soyadı: ${assignment.surname}</span>
+        <span>Ödev Adı: ${fileName}</span> <!-- Dosya adını buraya ekliyoruz -->
+        <button><a href="${assignment.fileURL}">Ödevi indir</a></button>
+        <button><p class="assignment-link">Ödev linkini kopyala</p></button>
+    `;
+    assignmentsList.appendChild(li);
+
+    // P elementine click event listener ekle
+    const pElement = li.querySelector('.assignment-link');
+    pElement.addEventListener('click', () => {
+        // Kopyalanacak olan linki alalım
+        const link = li.querySelector('a').getAttribute('href');
+        // Kopyalamak için kullanıcı arayüzünün desteklediği bir yöntem kullanarak panoya kopyalayabiliriz
+        navigator.clipboard.writeText(link)
+            .then(() => {
+                alert('Ödev linki başarıyla panoya kopyalandı.');
+            })
+            .catch((error) => {
+                console.error('Ödev linki kopyalanırken bir hata oluştu:', error);
+            });
+    });
+}
+
+            
     </script>
+
 </body>
 </html>
